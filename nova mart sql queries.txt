@@ -1,0 +1,648 @@
+NovaMart SQL Analysis — Business Intelligence Report
+
+
+
+Module 1: Revenue Performance
+How is the business performing financially?
+
+1. What is the total revenue generated overall?
+
+SQL QUERY:
+SELECT sum(total_revenue) FROM fact_order_items;
+
+Insights: This shows that the total revenue generated from all orders is over 14 B11illion naira.
+
+Business Recommendations:
+
+
+2. What is the total revenue per product category?
+
+SQL QUERY:
+SELECT pd.category AS product_category,
+SUM(oi.total_revenue) AS total_revenue
+FROM dim_product pd
+INNER JOIN fact_order_items oi
+ON pd.product_id = oi.product_id
+GROUP BY product_category
+ORDER BY total_revenue
+DESC;
+
+Insights:This reveals that Grocery category leads the highest revenue with over 5.11 Billon naira followed by sports 4.56 Billion, books 4.47billion, 
+homes and kitchen 4.44billion suggesting a balanced portfolio within 700milloon naira of eachother.  Electronics, Beauty and Fashion being the smallest generating over 3 billion naira each,
+ notable given its typical high price.
+
+Recomendations: Prioritize Grocery for loyalty programs to drive cross-category purchases, investigate electronics for pricing or stock issues and leverage sports 
+strong 2nd position with targeted promotions to maximize its untapped potential.
+
+3. What is the revenue breakdown by product category per country (Nigeria vs Ghana)?
+
+SQL QUERY:
+SELECT pd.category AS product_category,
+SUM(CASE WHEN dl.country = 'Nigeria' THEN oi.total_revenue ELSE 0 END) AS nigeria_revenue,
+SUM(CASE WHEN dl.country = 'Ghana' THEN oi.total_revenue ELSE 0 END) AS ghana_revenue
+FROM dim_location dl
+JOIN fact_orders fo
+ON dl.location_id = fo.location_id
+INNER JOIN fact_order_items oi
+ON fo.order_id = oi.order_id
+INNER JOIN dim_product pd
+ON oi.product_id = pd.product_id
+GROUP BY product_category
+ORDER BY nigeria_revenue
+DESC;
+
+Insights:Nigeria consistentl outperforms Ghana across all 7 categories, with the revenue gap, ranging from roughly 9x(Beauty) to 11x(Fashion).
+Fashion and Electronics are the weakest categories in both markets, while Grocery and Sports lead. Notably, Beauty performs relatively better in Ghana compared to
+other categories since it has the smallest gap with Nigeria proportionality.
+
+Reccomendations:Grocery's relatively smaller Nigeria-Ghana gap suggests its already NovaMarts' most penetrated category in Ghana, doubling gown there with localised promotions
+makes more sense as a Ghana growth strategy than beauty.
+
+4. What percentage of total revenue does each product category contribute?
+SQL QUERY
+WITH category_revenue AS (
+	SELECT pd.category AS product_category,
+		SUM(oi.total_revenue) AS cat_revenue
+	FROM dim_product pd
+    INNER JOIN fact_order_items oi 
+    ON pd.product_id = oi.product_id
+    GROUP BY product_category),
+    
+total AS(
+	SELECT SUM(cat_revenue) AS total_revenue
+    FROM category_revenue)
+    
+SELECT
+	product_category,
+    cat_revenue AS category_revenue,
+    ROUND(cat_revenue / total_revenue * 100, 2) AS revenue_percentage
+FROM category_revenue, total
+ORDER BY revenue_percentage
+DESC;
+
+Insights: Grocery leads with 17.61% of total revenue, but no single category dominates, the top 4 categories (Grocery, Sports, Books, Home & Kitchen) are clustered between
+15-18%, indicating a well-diversified revenue portfolio. Fashion is the lowest category as 10.59%
+
+Recommendations: The balanced revenue spread is actually a business strength, NovaMart isn't over reliant on one category. However, elecronics, beauty and fashion should
+be investigated for margin improvement opportunities since low revenue share in high ticket categories signals either pricing or volume problems worth addressing.
+
+
+5. Which month had the highest sales revenue?
+SQL QUERY:
+SELECT d.month_name AS month,
+SUM(oi.total_revenue) AS revenue
+FROM dim_date d
+JOIN fact_orders o
+ON d.date_id = o.order_date
+INNER JOIN fact_order_items oi
+ON o.order_id = oi.order_id
+GROUP BY d.month_name
+ORDER BY revenue
+DESC;
+
+Insights: December dominates with N1.94B in revenue, nearly 22% higher than November(N1.60B) in 2nd place. Q1 is consistently the weakest period with February recording 
+the lowest revenue at N885M. The pattern suggests strong end-of-year seasonality, likely driven by festive shopping.
+
+Recommendation:NovaMart should spend ahead of Q4, particularly October through December, to capitalize in the sesonal surge. Q1 represents a discovery challenge, targeted
+promotions in January and February (post festive duscounts, loyalty rewards) could help maintain customer engagement through the slow period.
+
+
+6. What is the month-over-month revenue growth rate?
+SQL QUERY:
+WITH monthly_revenue AS (
+    SELECT d.year, d.month_name AS month, d.month AS month_num,
+           SUM(oi.total_revenue) AS revenue
+    FROM dim_date d
+    JOIN fact_orders o ON d.date_id = o.order_date
+    INNER JOIN fact_order_items oi ON o.order_id = oi.order_id
+    GROUP BY d.year, d.month_name, d.month
+),
+lagged AS (
+    SELECT year, month, month_num, revenue,
+           LAG(revenue) OVER (ORDER BY year, month_num) AS prev_month_revenue
+    FROM monthly_revenue
+)
+SELECT year, month, revenue,
+       ROUND((revenue - prev_month_revenue) / prev_month_revenue * 100, 2) AS mom_growth_pct
+FROM lagged
+ORDER BY year, month_num; 
+
+Insights: Revenue follows a clear seasonal pattern across all four years, Q4 (November–December) consistently peaks while January records the sharpest drop each year, 
+falling between -42% and -48% from the December high. Growth is generally stable through mid-year before the festive surge kicks in.
+
+Recommendations: Build a January recovery strategy through post-festive promotions and loyalty campaigns to cushion the annual revenue drop. Front-load inventory and 
+marketing investment ahead of Q4 every year to maximise the predictable festive surge.
+
+---
+
+
+Module 2: Product Performance
+Which products are driving the business?
+
+7. Which top 10 products had the highest quantity sold?
+
+SQL QUERY:
+SELECT dp.product_name AS products,
+count(oi.quantity) AS quantity_sold
+FROM fact_order_items oi
+INNER JOIN dim_product dp
+ON oi.product_id = dp.product_id
+GROUP BY products
+ORDER BY quantity_sold
+DESC LIMIT 10;
+
+Insights:
+Cookbook leads with 7,838 units sold, followed closely by Women's Dress (7,826) and Programming (7,790), the top 10 are tightly clustered between 7,548 and 7,838 units, 
+suggesting broadly even demand across product types. Notably the top 10 spans multiple categories Books, Fashion, Home & Kitchen, Sports indicating no single category 
+monopolises volume.
+
+Recommendations: Cookbook and Women's Dress are clear inventory priorities ensure consistent stock levels to avoid lost sales on the highest-demand products. The 
+tight clustering across all 10 products suggests NovaMart's product mix is well balanced, but bundling top sellers across categories (e.g. Cookbook + Kitchen 
+accessories) could drive higher basket sizes.
+
+8. Which top 10 products generated the most revenue?
+SQL QUERY
+SELECT dp.product_name AS products,
+SUM(oi.total_revenue) AS revenue_generated
+FROM fact_order_items oi
+INNER JOIN dim_product dp
+ON oi.product_id = dp.product_id
+GROUP BY products
+ORDER BY revenue_generated
+DESC LIMIT 10;
+
+Insights:Microwave dominates revenue at ₦1.11B, significantly ahead of second-place Mascara (₦983M), suggesting high unit price drives revenue even if volume isn't the
+ highest. Interestingly, none of the top 10 revenue generators appeared in the top 10 by quantity sold, confirming that high-volume products aren't necessarily high-revenue 
+products, unit price matters.
+
+Recommendations:
+Microwave and other high-revenue appliances (Coffee Maker) should be prioritised for upselling and premium placement in marketing. The disconnect between volume leaders 
+and revenue leaders signals an opportunity to bundle high-volume low-price products with high-value items to increase basket size and overall revenue per transaction.
+
+9. Which product category has the highest average order value?
+SQL QUERYY:
+SELECT dp.category AS product_category,
+SUM(oi.total_revenue) / COUNT(DISTINCT oi.order_id) AS avg_order_value
+FROM fact_order_items oi
+INNER JOIN dim_product dp
+ON oi.product_id = dp.product_id
+GROUP BY product_category
+ORDER BY avg_order_value;
+
+Insights
+Grocery has the highest average order value at ₦419,536 despite not having the highest unit prices, suggesting customers buy more items per Grocery order. Fashion sits 
+at the bottom with ₦247,017 which is consistent with its low overall revenue performance. The gap between Grocery and Fashion is nearly 70%, which is significant.
+
+Recommendations
+Grocery’s high average order value makes it the prime candidate for upselling and cross-category promotions. Fashion needs a basket-size strategy such as bundle offers 
+or minimum spend incentives could lift its average order value closer to the category mean.
+
+
+10. Which categories are underperforming (bottom 3 by revenue)?
+SQL QUERY:
+SELECT dp.category AS product_category,
+SUM(oi.total_revenue) AS revenue_generated
+FROM fact_order_items oi
+INNER JOIN dim_product dp
+ON oi.product_id = dp.product_id
+GROUP BY product_category
+ORDER BY revenue_generated
+LIMIT 3;
+
+Insights
+Fashion (₦3.07B), Beauty (₦3.66B), and Electronics (₦3.71B) are the three weakest categories and notably Fashion also has the lowest average order value, making it the
+ most concerning category on two dimensions simultaneously.
+
+Recommendations
+Fashion requires urgent attention because its lowest revenue AND lowest average order value signals both a volume and pricing problem. Electronics underperformance relative to 
+its typically high unit prices suggests a stock or demand issue worth investigating through a follow-up quantity analysis.
+
+
+---
+
+Module 3: Customer Analysis
+Who are our customers and how do they behave?
+
+11. How many customers are in each country?
+SQL QUERY
+SELECT country AS country_name, COUNT(DISTINCT customer_id) AS no_of_customers
+FROM dim_customer
+GROUP BY country_name
+ORDER BY no_of_customers
+DESC;
+
+Insights
+Nigeria has 13,829 customers versus Ghana's 1,171 which shows that Nigeria accounts for over 92% of NovaMart's customer base. This aligns with the revenue gap seen in 
+Module 1, confirming that the Nigeria-Ghana disparity is driven by customer volume, not just spending behaviour.
+
+Recommendations
+Ghana's small customer base represents a significant growth opportunity. A targeted customer acquisition strategy in Ghana — localised marketing, referral programs, 
+or market-specific promotions — could meaningfully expand NovaMart's footprint without the saturation risk that exists in the larger Nigerian market.
+
+
+12. What is the average order value per customer tier (Bronze, Silver, Gold)?
+SQL QUERY
+SELECT dc.loyalty_tier AS customer_tier,
+SUM(oi.total_revenue) / COUNT(DISTINCT oi.order_id) AS avg_order_value
+FROM fact_order_items oi
+INNER JOIN fact_orders fo
+ON oi.order_id = fo.order_id
+INNER JOIN dim_customer dc
+ON fo.customer_id = dc.customer_id
+GROUP BY customer_tier
+ORDER BY avg_order_value
+DESC;
+
+Insights
+Average order value is remarkably consistent across all loyalty tiers, ranging from just ₦307K (Platinum) to ₦318K (Gold), a difference of less than 4%. 
+Counterintuitively, Platinum customers have the lowest average order value, suggesting loyalty tier assignment may be driven by purchase frequency rather than spend 
+per order.
+
+Recommendations
+NovaMart should review its loyalty tier criteria, if Platinum customers aren't spending more per order, the tier may not be rewarding the right behaviour. Introducing 
+spend-based tier thresholds or minimum order value incentives for higher tiers could encourage larger basket sizes among loyal customers and better differentiate tier value.
+
+
+13. How many orders did each customer place and what was their total spend?
+SQL QUERY
+SELECT 
+dc.customer_name as name,
+COUNT(DISTINCT fo.order_id) AS total_orders,
+SUM(oi.total_revenue) AS total_spend
+FROM dim_customer dc
+INNER JOIN fact_orders fo ON dc.customer_id = fo.customer_id
+INNER JOIN fact_order_items oi ON fo.order_id = oi.order_id
+GROUP BY dc.customer_id, dc.customer_name
+ORDER BY total_spend DESC;
+
+Insights
+Top spenders range from ₦4.4M to ₦5.1M in total spend. Aisha Asante leads with ₦5.13M across just 7 orders, suggesting high average order value per transaction. 
+Notably Ngozi Nkrumah placed 10 orders but ranks 6th by spend, while single-order customers like Femi Adeyemi and Kwame Asante still appear in the mid-spend range, 
+confirming that order frequency doesn't always equal higher total spend.
+
+Recommendations
+High-value low-frequency customers like Aisha Asante are VIP targets therefore personalized outreach and exclusive offers could increase their already high order 
+values further. High-frequency lower-spend customers like Ngozi Nkrumah (10 orders) need basket-size nudges such as bundle deals or minimum spend thresholds per order
+ could significantly lift their total contribution.
+
+14. Rank customers by total spend within each country.
+SQL QUERY
+WITH customer_spend AS (
+    SELECT 
+        dc.customer_name,
+        dc.country,
+        SUM(oi.total_revenue) AS total_spend
+    FROM dim_customer dc
+    INNER JOIN fact_orders fo ON dc.customer_id = fo.customer_id
+    INNER JOIN fact_order_items oi ON fo.order_id = oi.order_id
+    GROUP BY dc.customer_id, dc.customer_name, dc.country
+)
+SELECT 
+    customer_name,
+    country,
+    total_spend,
+    RANK() OVER (PARTITION BY country ORDER BY total_spend DESC) AS spend_rank
+FROM customer_spend
+ORDER BY country, spend_rank;
+
+Insights
+Ghana's top spender Aisha Asante leads with ₦5.13M, while Nigeria has over 13,000 ranked customers also confirming the massive customer base gap between both markets. 
+Within Nigeria, the bottom-ranked customers (rank 13,146+) are spending as little as ₦2,080–₦5,200, highlighting a very wide spending distribution across the Nigerian 
+customer base.
+
+Recommendations
+The wide spending gap within Nigeria suggests a segmentation opportunity, high spenders need retention programs while low spenders need activation campaigns to increase
+ engagement. For Ghana, the relatively small customer pool means every top spender is disproportionately valuable, personalized VIP treatment for Ghana's top 10 customers 
+could meaningfully impact overall Ghana revenue.
+
+
+15. Which customers made only one purchase? (Churn risk)
+SQL QUERY
+SELECT 
+dc.customer_name,
+dc.customer_id,
+COUNT(DISTINCT fo.order_id) AS total_orders
+FROM dim_customer dc
+INNER JOIN fact_orders fo ON dc.customer_id = fo.customer_id
+GROUP BY dc.customer_id, dc.customer_name
+HAVING COUNT(DISTINCT fo.order_id) = 1
+ORDER BY dc.customer_name;
+
+Insights
+Out of 15,000 total customers, 1,781 made only one purchase which is representing approximately 11.9% of the customer base. These are potential churn risks who engaged 
+with NovaMart once but never returned. Given that Nigeria accounts for 92% of the customer base, the majority of these single-purchase customers are likely Nigerian, 
+suggesting retention is a bigger challenge in the more mature market than in Ghana.
+
+Recommendations
+An 11.9% one-time buyer rate is worth addressing urgently, a targeted win-back campaign (post-purchase follow-up emails, first-return discount offers, or loyalty point 
+incentives) specifically for these 1,781 customers could convert even 20% of them into repeat buyers, adding meaningful revenue. Understanding why they didn't return,
+ whether through survey data or purchase pattern analysis would further sharpen the retention strategy.
+
+
+16. RFM Segmentation — Score each customer on Recency, Frequency, and Monetary value.
+SQL QUERY
+WITH rfm_base AS (
+    SELECT 
+        dc.customer_id,
+        dc.customer_name,
+        DATEDIFF(MAX(fo.order_date), '2024-12-30') * -1 AS recency_days,
+        COUNT(DISTINCT fo.order_id) AS frequency,
+        SUM(oi.total_revenue) AS monetary
+    FROM dim_customer dc
+    INNER JOIN fact_orders fo ON dc.customer_id = fo.customer_id
+    INNER JOIN fact_order_items oi ON fo.order_id = oi.order_id
+    GROUP BY dc.customer_id, dc.customer_name
+),
+rfm_scored AS (
+    SELECT *,
+        NTILE(3) OVER (ORDER BY recency_days ASC) AS r_score,
+        NTILE(3) OVER (ORDER BY frequency DESC) AS f_score,
+        NTILE(3) OVER (ORDER BY monetary DESC) AS m_score
+    FROM rfm_base
+)
+SELECT 
+    customer_id,
+    customer_name,
+    recency_days,
+    frequency,
+    monetary,
+    r_score,
+    f_score,
+    m_score,
+    CASE 
+        WHEN r_score = 3 AND f_score = 3 AND m_score = 3 THEN 'Champion'
+        WHEN r_score >= 2 AND f_score >= 2 THEN 'Loyal Customer'
+        WHEN r_score = 3 AND f_score = 1 THEN 'New Customer'
+        WHEN r_score = 1 AND f_score >= 2 THEN 'At Risk'
+        ELSE 'Needs Attention'
+    END AS rfm_segment
+FROM rfm_scored
+ORDER BY monetary DESC;
+
+Insights
+The RFM segmentation reveals a healthy mix of customer types, Champions cluster around high monetary scores regardless of frequency, while At Risk customers show high 
+recency scores but low frequency, suggesting they were once active but have gone quiet. The majority fall into Needs Attention, consistent with the 11.9% single-purchase 
+finding from Q15.
+
+Recommendations
+Prioritise Champions for exclusive loyalty rewards to protect NovaMart's highest-value relationships. At Risk customers need immediate win-back campaigns, they've 
+purchased before so the barrier to re-engagement is lower than acquiring new customers. Needs Attention customers represent the largest opportunity volume-wise and 
+should receive automated re-engagement sequences.
+
+---
+
+Module 4: Location & Employee Performance
+
+Where and who is driving sales?
+
+17. Which cities/regions generated the most revenue?
+SQL QUERY
+SELECT 
+    l.city,
+    l.region,
+    ROUND(SUM(f.total_revenue), 2) AS total_revenue
+FROM fact_order_items f
+INNER JOIN fact_orders o ON o.order_id = f.order_id
+JOIN dim_location l ON o.location_id = l.location_id
+GROUP BY l.city, l.region
+ORDER BY total_revenue DESC;
+
+Insight
+Revenue is tightly clustered across cities, Ikeja leads at ~₦1.23B but the gap to last-placed Ibadan (~₦1.16B) is narrow, suggesting a distributed customer base with no 
+single dominant market.
+
+Recommendation
+Investigate what drives Ikeja and Abuja CBD's marginal edge product mix, staffing, or channel access and replicate those conditions in lower-performing cities. 
+The N/A region tags on Online and Accra entries also need resolving before this data is used in any stakeholder report.
+
+
+18. What is the total revenue attributed to each employee?
+SQL QUERY
+SELECT
+    e.employee_id,
+    e.full_name,
+    ROUND(SUM(f.total_revenue), 2) AS total_revenue
+FROM fact_order_items f
+INNER JOIN fact_orders o ON o.order_id = f.order_id
+JOIN dim_employee e ON o.employee_id = e.employee_id
+GROUP BY e.employee_id, e.full_name
+ORDER BY total_revenue DESC;
+
+Insight
+
+Abena Eze leads at ₦72.9M while the bottom of the list sits around ₦40–47M, a meaningful gap suggesting performance is not evenly distributed across the team. The 
+spread indicates some employees are consistently handling higher-value transactions or larger order volumes than others.
+
+Recommendation
+Cross-reference top performers like Abena Eze and Emeka Musa against their assigned locations and departments to determine whether their revenue advantage is driven by 
+individual performance or structural factors like territory size or product access. That distinction matters before any incentive or reallocation decision is made.
+
+
+19. Which employee handled the highest number of orders?
+SQL QUERY
+SELECT
+    e.employee_id,
+    e.full_name,
+    COUNT(DISTINCT o.order_id) AS total_orders
+FROM fact_orders o
+JOIN dim_employee e ON o.employee_id = e.employee_id
+GROUP BY e.employee_id, e.full_name
+ORDER BY total_orders DESC
+LIMIT 10;
+
+Insight
+
+Order volume is remarkably consistent across the top 10, ranging from 223 to 229 orders with Ade Eze and Kwame Diallo tied at the top. This near-uniform distribution 
+suggests order allocation across employees is fairly balanced rather than concentrated in a few high-activity individuals.
+
+Recommendation
+Since volume alone shows little differentiation, pair this with Q18's revenue figures to identify employees handling fewer but higher-value orders versus those with 
+high volume but lower average transaction size. That combination reveals where quality of order management varies, which is a more actionable performance signal than 
+order count alone.
+
+
+20. Which location has the highest average order value?
+SQL QUERY
+SELECT
+    l.city,
+    l.region,
+    ROUND(SUM(f.total_revenue) / COUNT(DISTINCT o.order_id), 2) AS avg_order_value
+FROM fact_order_items f
+INNER JOIN fact_orders o ON o.order_id = f.order_id
+JOIN dim_location l ON o.location_id = l.location_id
+GROUP BY l.city, l.region
+ORDER BY avg_order_value DESC;
+
+Insight
+Average order values are extremely tight across all locations Ikeja leads at ₦320,996 while Online sits lowest at ₦308,090, a difference of less than 4%. This suggests
+ customer spending behaviour is largely consistent regardless of where they shop, with no location commanding a meaningfully premium basket size.
+
+Recommendation
+Since location alone isn't driving order value differences, NovaMart's focus should shift to product mix and upsell strategies applied consistently across all locations. 
+The Online channel's slightly lower average is worth monitoring — it may reflect a different product assortment or the absence of in-store upsell opportunities that 
+physical locations benefit from.
+
+
+Module 5: Payment Behaviour
+How are customers paying?
+
+21. What is the total number of orders per payment method?
+SQL QUERY
+SELECT
+    payment_method,
+    COUNT(DISTINCT order_id) AS total_orders
+FROM fact_payments
+GROUP BY payment_method
+ORDER BY total_orders DESC;
+
+Insight
+Card dominates order volume at 12,356 more than all other methods combined confirming it as NovaMart's primary payment channel. POS and USSD trail significantly, while 
+the 1,677 "Unknown" entries remain a data quality concern.
+
+Recommendation
+Card infrastructure should be prioritised for reliability and uptime across all locations. The Unknown category needs investigation and retrospective classification 
+untagged transactions at that volume create blind spots in any payment strategy analysis.
+
+
+22. Which payment method generates the highest average transaction value?
+SQL QUERY
+SELECT
+    payment_method,
+    ROUND(AVG(amount_ngn), 2) AS avg_transaction_value
+FROM fact_payments
+GROUP BY payment_method
+ORDER BY avg_transaction_value DESC;
+
+Insight
+Wallet generates the highest average transaction value at ₦566,103 despite ranking fourth in order volume, while POS sits lowest at ₦408,766. This suggests Wallet users 
+tend to make fewer but higher-value purchases, possibly reflecting a more deliberate, digitally-savvy customer segment.
+
+Recommendation
+NovaMart should invest in Wallet adoption incentives such as cashback, instant discounts to grow a channel that already attracts high-value transactions. POS's low 
+average may reflect in-store impulse purchases; bundling or minimum-spend promotions at POS terminals could help lift that figure.
+
+
+23. Is there a relationship between payment method and customer tier?
+SQL QUERY
+SELECT
+    c.loyalty_tier,
+    p.payment_method,
+    COUNT(DISTINCT p.order_id) AS total_orders,
+    ROUND(AVG(p.amount_ngn), 2) AS avg_amount_paid
+FROM fact_payments p
+JOIN fact_orders o ON p.order_id = o.order_id
+JOIN dim_customer c ON o.customer_id = c.customer_id
+GROUP BY c.loyalty_tier, p.payment_method
+ORDER BY c.loyalty_tier, total_orders DESC;
+
+Insight
+Wallet emerges as the highest average transaction method for Bronze customers (~₦652K) despite ranking third in volume, while Card dominates order count across all 
+tiers. Platinum's "Unknown" payment method records an unusually high average of ~₦2.19M which is a data quality flag worth investigating before drawing conclusions 
+about that segment.
+
+Recommendation
+The Wallet-Bronze pattern suggests some Bronze customers are making high-value occasional purchases rather than frequent low-spend transactions these may be candidates
+ for loyalty tier upgrades. The Platinum "Unknown" anomaly should be traced back to source data; if it reflects a legitimate payment channel, it needs proper 
+categorisation before any payment strategy decisions are made.
+
+---
+
+Module 6: Advanced & Outlier-Aware Analysis
+Deeper patterns and data integrity checks
+
+24. For each product category, show the running total of revenue over time.
+SQL QUERY
+SELECT
+    p.category,
+    d.full_date,
+    ROUND(SUM(f.total_revenue), 2) AS daily_revenue,
+    ROUND(SUM(SUM(f.total_revenue)) OVER (
+        PARTITION BY p.category
+        ORDER BY d.full_date
+    ), 2) AS running_total
+FROM fact_order_items f
+INNER JOIN fact_orders o ON o.order_id = f.order_id
+JOIN dim_product p ON f.product_id = p.product_id
+JOIN dim_date d ON o.order_date = d.full_date
+GROUP BY p.category, d.full_date
+ORDER BY p.category, d.full_date;
+
+Insight
+All categories show a steady, uninterrupted upward running total across the dataset period, no visible plateaus or reversals confirming consistent sales activity 
+throughout. Daily revenue fluctuates normally but the cumulative trend is stable across Beauty, Books, Electronics, Fashion, Grocery, Home & Living and Sports.
+
+Recommendation
+Use the running total as a baseline to layer in seasonality analysis, identifying which months accelerate the curve most steeply per category will inform where to 
+concentrate promotional spend ahead of naturally high-demand periods.
+
+25. Identify customers whose purchase quantity exceeds the category outlier threshold validating your outlier treatment logic.
+SQL QUERY
+SELECT
+    o.customer_id,
+    c.customer_name,
+    p.category,
+    f.quantity,
+    f.outlier_flag,
+    f.outlier_treatment
+FROM fact_order_items f
+INNER JOIN fact_orders o ON o.order_id = f.order_id
+JOIN dim_product p ON f.product_id = p.product_id
+JOIN dim_customer c ON o.customer_id = c.customer_id
+WHERE f.outlier_flag = 'Yes'
+ORDER BY p.category, f.quantity DESC;
+
+Insight
+The query returned no rows, meaning no records in fact_order_items have outlier_flag = 'Yes'. This confirms that during the Excel cleaning stage, flagged rows were 
+either corrected in place or the flag values are stored differently possibly as 'yes', 'YES', 1, or 'Outlier'.
+
+26. Cohort Analysis: Group customers by their first purchase month and track how many returned in subsequent months.
+SQL QUERY
+SELECT
+    cohort_month,
+    months_since_first_purchase,
+    COUNT(DISTINCT customer_id) AS returning_customers
+FROM (
+    SELECT
+        o.customer_id,
+        DATE_FORMAT(MIN(o.order_date) OVER (PARTITION BY o.customer_id), '%Y-%m') AS cohort_month,
+        TIMESTAMPDIFF(
+            MONTH,
+            MIN(o.order_date) OVER (PARTITION BY o.customer_id),
+            o.order_date
+        ) AS months_since_first_purchase
+    FROM fact_orders o
+) cohort_data
+GROUP BY cohort_month, months_since_first_purchase
+ORDER BY cohort_month, months_since_first_purchase;
+
+Insight
+The January 2021 cohort i.e NovaMart's earliest customers shows 631 first-time buyers, with returning customer counts staying relatively stable in the 20–47 range 
+across subsequent months. Later cohorts like 2024-11 and 2024-12 show only month-0 activity, which is expected as they haven't had time to return yet. Retention does 
+not collapse sharply, suggesting reasonable but not exceptional repeat purchase behaviour.
+
+Recommendation
+Focus retention investment on months 1–3 post-acquisition where the drop from 631 to the 20–47 range is steepest. A structured onboarding sequence such as follow-up 
+offers, personalised recommendations in the first 90 days could meaningfully lift those early return figures across all cohorts.
+
+27. What is the revenue contribution of flagged outlier rows vs clean rows?
+SQL QUERY
+SELECT
+    CASE
+        WHEN outlier_flag = 'Yes' THEN 'Flagged Outlier'
+        ELSE 'Clean'
+    END AS row_type,
+    COUNT(item_id) AS total_rows,
+    ROUND(SUM(total_revenue), 2) AS total_revenue,
+    ROUND(SUM(total_revenue) / SUM(SUM(total_revenue)) OVER () * 100, 2) AS revenue_pct
+FROM fact_order_items
+GROUP BY outlier_flag;
+
+Insight
+100% of revenue with ₦14.51B across 96,189 rows is attributed to clean rows, with zero flagged outlier contribution. This is consistent with the Q25 finding and points 
+to the same root cause: the outlier_flag value in the database does not match 'Yes' exactly. The cleaning work was done, but the flag values need verification before 
+this query returns a meaningful split.
+
+Recommendation
+Once the correct flag value is confirmed and the query is adjusted, this result will be analytically significant it will quantify exactly how much revenue would have 
+been distorted had outlier rows been left uncapped, directly validating the cleaning decisions made during the Excel stage.
+
