@@ -50,7 +50,8 @@ Star schema with the following tables:
 - Nigeria significantly outperforms Ghana across nearly every metric
 - Revenue leans heavily on Q4, raising the question of what happens if that quarter underperforms
 
-*[screenshot: executive-overview.png]*
+<img width="969" height="556" alt="executive-overview" src="https://github.com/user-attachments/assets/3a626a9b-d6a4-4db3-bda5-9b63ac6b9514" />
+
 
 ### 2. Customer Intelligence
 **Story:** NovaMart retains customers well, but its loyalty tier system isn't changing customer behaviour.
@@ -59,10 +60,9 @@ Star schema with the following tables:
 - Customer Lifetime Value (CLV) and order frequency are nearly flat across Bronze, Silver, and Gold
 - Retention is strong on its own, but the tier structure isn't doing the job of driving customers up the value ladder
 
-*[screenshot: customer-intelligence.png]*
+<img width="970" height="552" alt="customer-intelligence" src="https://github.com/user-attachments/assets/0ef69a99-57e2-4e4f-a53e-43df8e973d92" />
 
-### A note on scope
-A third dashboard covering operational efficiency (fulfillment time, staffing, inventory turnover) was deliberately dropped. The synthetic dataset doesn't include the operational fields that question would need, and shipping a dashboard built on data that isn't there isn't good analyst judgment — so it was cut rather than faked.
+
 
 ## Key Recommendations
 
@@ -88,4 +88,4 @@ novamart/
 
 ## Author
 
-[Your name] — built as part of a data analytics portfolio.
+Oluwabusola Oyenuga — built as part of a data analytics portfolio.
