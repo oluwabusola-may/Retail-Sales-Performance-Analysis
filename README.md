@@ -1,5 +1,4 @@
-# novamart-analysis
-[README (1).md](https://github.com/user-attachments/files/29161149/README.1.md)
+[README.md](https://github.com/user-attachments/files/34258378/README.md)
 # NovaMart: Multi-Channel Retail Analytics (2021–2024)
 
 A simulated end-to-end analyst project for **NovaMart**, a fictional multi-channel retailer operating across Nigeria and Ghana. Built to mirror real analyst work: synthetic data generation, data cleaning, SQL analysis, and a two-dashboard Power BI story — not a tutorial exercise.
@@ -74,15 +73,13 @@ Star schema with the following tables:
 ## Repo Structure
 
 ```
-novamart/
-├── data/
-│   └── [synthetic CSVs / generation scripts]
-├── sql/
-│   └── [analysis queries by business question]
-├── powerbi/
-│   └── [NovaMart.pbix]
-├── screenshots/
-│   └── [dashboard images]
+Retail-Sales-Performance-Analysis/
+├── NovaMart Retail dirty data.zip   # Raw synthetic data with embedded quality issues
+├── NovaMart Cleaned.zip             # Cleaned data
+├── nova mart sql queries.txt        # SQL analysis by business question
+├── NovaMart PowerBI.pbix            # Two-dashboard Power BI file
+├── executive-overview.png           # Dashboard 1
+├── customer-intelligence.png        # Dashboard 2
 └── README.md
 ```
 
